@@ -77,7 +77,18 @@ client.on("message", async message => {
   if(command === "plainte") {
     message.delete().catch(O_o=>{});
     const m = await message.channel.send("Processus de prise de plainte en cours. Veuillez indiquer le nom et le prénom de la victime.");
-    
+
+
+    message.author.send("Processus de prise de plainte en cours. Veuillez indiquer le nom et le prénom de la victime.");
+    const collector = new Discord.MessageCollector(message.channel, m => m.author.id === message.author.id, { time: 10000 });
+    console.log(collector)
+    collector.on('collect', message => {
+        if (message.content == "See") {
+            message.channel.send("You Want To See Someones Spec OK!");
+        } else if (message.content == "Change") {
+            message.channel.send("You Want To Change Your Spec OK!");
+        }
+    })
   }
   
   if(command === "kick") {
