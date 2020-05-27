@@ -16,7 +16,7 @@ client.on("ready", () => {
   console.log(`Bot is ready to operate.`);
   // Example of changing the bot's playing game to something useful. `client.user` is what the
   // docs refer to as the "ClientUser".
-  client.user.setActivity(`To protect and serve`);
+  client.user.setActivity(`protect and serve`);
 });
 
 client.on("guildCreate", (guild) => {
@@ -51,29 +51,6 @@ client.on("message", async (message) => {
   const args = message.content.slice(config.prefix.length).trim().split(/ +/g);
   const command = args.shift().toLowerCase();
 
-  // Let's go with a few common example commands! Feel free to delete or change those.
-
-  if (command === "ping") {
-    // Calculates ping between sending a message and editing it, giving a nice round-trip latency.
-    // The second ping is an average latency between the bot and the websocket server (one-way, not round-trip)
-    const m = await message.channel.send("Ping?");
-    m.edit(
-      `Pong! Latency is ${
-        m.createdTimestamp - message.createdTimestamp
-      }ms. API Latency is ${Math.round(client.ping)}ms`
-    );
-  }
-
-  if (command === "say") {
-    // makes the bot say something and delete the message. As an example, it's open to anyone to use.
-    // To get the "message" itself we join the `args` back into a string with spaces:
-    const sayMessage = args.join(" ");
-    // Then we delete the command message (sneaky, right?). The catch just ignores the error with a cute smiley thing.
-    message.delete().catch((O_o) => {});
-    // And we get the bot to say the thing:
-    message.channel.send(sayMessage);
-  }
-
   if (command === "help") {
     message.delete().catch((O_o) => {});
     message.channel.send(
@@ -82,122 +59,74 @@ client.on("message", async (message) => {
   }
 
   if (command === "plainte") {
+    // Delete la commande pour plus de clarté
     message.delete().catch((O_o) => {});
-
-    // let Author = message.author;
-    // let Authorid = Author.id; //You will need this in the future
-
+    // Set le filtre en ignorant les messages du bot
     let filter = (m) => !m.author.bot;
- 
-    message.channel.awaitMessages(filter, { max: 1 }).then((collected1) => {
-  
+    message.channel.send(
+      "Veuillez entrer le **nom** et le **prénom** de la victime."
+    );
+    // Message 1 - Nom Prénom
+    message.channel.awaitMessages(filter, { max: 2 }).then((collected1) => {
       const response1 = collected1.first();
       let name = response1.content;
 
-      message.channel.awaitMessages(filter, { max: 1 }).then((collected2) => {
-        
+      // Message 2 - Téléphone
+      message.channel.send("Veuillez saisir son **n° de téléphone**.");
+      message.channel.awaitMessages(filter, { max: 2 }).then((collected2) => {
         const response2 = collected2.first();
         let tel = response2.content;
 
-        message.channel.send(name + " " + tel);
+        // Message 3 - Déposition
+        message.channel.send("Veuillez maintenant rédiger la **déposition**.");
+        message.channel.awaitMessages(filter, { max: 2 }).then((collected3) => {
+          const response3 = collected3.first();
+          let deposition = response3.content;
+
+          // Result
+          let embed = new Discord.RichEmbed()
+            .setTitle("Dépôt de plainte - " + name + " (" + tel + ")")
+            .setDescription(deposition)
+            .setTimestamp()
+            .setAuthor(message.author.tag, message.author.displayAvatarURL)
+            .setColor("#FFAB32");
+
+          message.channel.send("Valider la plainte ?");
+          message.channel.send(embed).then((embedMessage) => {
+            embedMessage.react("👍").then(() => embedMessage.react("👎"));
+          });
+
+          const filter2 = (reaction) => {
+            return ["👍", "👎"].includes(reaction.emoji.name);
+          };
+
+          message.awaitReactions(filter2, { max: 4, time: 5000, errors: ["time"] })
+          .then((collected) => {
+            const reaction = collected.first();
+            console.log("aa");
+            if (reaction.emoji.name === "👍") {
+              console.log("ff");
+              message.reply("sa marche lol");
+            } else message.reply("Operation canceled.");
+          })
+          .catch(() => {
+            message.reply(
+              "No reaction after 5 seconds, operation cancelled"
+            );
+          });
+        });
       });
     });
 
-    
-    // let filter = (m) => !m.author.bot;
-    // let collector = new Discord.MessageCollector(message.channel, filter);
-    // collector.on("collect", (message, col) => {
-    //   let victimInfos = [];
-    //   if (message.author.bot) return;
-    //   if (message.content.startsWith("annuler")) {
-    //     collector.stop();
-    //     message.channel.send("Prise de plainte annulée.");
-    //   } else {
-    //     let name = message.content;
-    //     victimInfos.push(name);
-    //     message.channel
-    //       .send("```Nom de la victime : " + victimInfos[0] + "```")
-    //       .then(() => {
-    //         message.channel.send("Entrez son n° de téléphone.");
-    //         if (message.author.bot) return;
-    //         let tel = message.content;
-    //         victimInfos.push(tel);
-    //         message.channel.send("N° de téléphone : " + victimInfos[1]);
-    //       });
-    //   }
-    //   console.log("Collected message: " + message.content);
-    //   console.log("array: " + victimInfos);
-    // });
-  }
-
-  if (command === "kick") {
-    // This command must be limited to mods and admins. In this example we just hardcode the role names.
-    // Please read on Array.some() to understand this bit:
-    // https://developer.mozilla.org/en/docs/Web/JavaScript/Reference/Global_Objects/Array/some?
-    if (
-      !message.member.roles.some((r) =>
-        ["Administrator", "Moderator"].includes(r.name)
-      )
-    )
-      return message.reply("Sorry, you don't have permissions to use this!");
-
-    // Let's first check if we have a member and if we can kick them!
-    // message.mentions.members is a collection of people that have been mentioned, as GuildMembers.
-    // We can also support getting the member by ID, which would be args[0]
-    let member =
-      message.mentions.members.first() || message.guild.members.get(args[0]);
-    if (!member)
-      return message.reply("Please mention a valid member of this server");
-    if (!member.kickable)
-      return message.reply(
-        "I cannot kick this user! Do they have a higher role? Do I have kick permissions?"
-      );
-
-    // slice(1) removes the first part, which here should be the user mention or ID
-    // join(' ') takes all the various parts to make it a single string.
-    let reason = args.slice(1).join(" ");
-    if (!reason) reason = "No reason provided";
-
-    // Now, time for a swift kick in the nuts!
-    await member
-      .kick(reason)
-      .catch((error) =>
-        message.reply(
-          `Sorry ${message.author} I couldn't kick because of : ${error}`
-        )
-      );
-    message.reply(
-      `${member.user.tag} has been kicked by ${message.author.tag} because: ${reason}`
-    );
-  }
-
-  if (command === "ban") {
-    // Most of this command is identical to kick, except that here we'll only let admins do it.
-    // In the real world mods could ban too, but this is just an example, right? ;)
-    if (!message.member.roles.some((r) => ["Administrator"].includes(r.name)))
-      return message.reply("Sorry, you don't have permissions to use this!");
-
-    let member = message.mentions.members.first();
-    if (!member)
-      return message.reply("Please mention a valid member of this server");
-    if (!member.bannable)
-      return message.reply(
-        "I cannot ban this user! Do they have a higher role? Do I have ban permissions?"
-      );
-
-    let reason = args.slice(1).join(" ");
-    if (!reason) reason = "No reason provided";
-
-    await member
-      .ban(reason)
-      .catch((error) =>
-        message.reply(
-          `Sorry ${message.author} I couldn't ban because of : ${error}`
-        )
-      );
-    message.reply(
-      `${member.user.tag} has been banned by ${message.author.tag} because: ${reason}`
-    );
+    /**
+     *
+     *
+     *
+     *
+     *
+     *
+     *
+     */
   }
 
   if (command === "purge") {
